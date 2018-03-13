@@ -1,14 +1,14 @@
 <?php
 
-namespace Dusterio\AwsWorker\Integrations;
+namespace Nadge\AwsWorker\Integrations;
 
-use Dusterio\AwsWorker\Wrappers\WorkerInterface;
-use Dusterio\AwsWorker\Wrappers\DefaultWorker;
-use Dusterio\AwsWorker\Wrappers\Laravel53Worker;
+use Nadge\AwsWorker\Wrappers\WorkerInterface;
+use Nadge\AwsWorker\Wrappers\DefaultWorker;
+use Nadge\AwsWorker\Wrappers\Laravel53Worker;
 
 /**
  * Class BindsWorker
- * @package Dusterio\AwsWorker\Integrations
+ * @package Nadge\AwsWorker\Integrations
  */
 trait BindsWorker
 {

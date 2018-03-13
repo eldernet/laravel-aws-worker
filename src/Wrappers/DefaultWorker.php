@@ -1,12 +1,12 @@
 <?php
 
-namespace Dusterio\AwsWorker\Wrappers;
+namespace Nadge\AwsWorker\Wrappers;
 
 use Illuminate\Queue\Worker;
 
 /**
  * Class DefaultWorker
- * @package Dusterio\AwsWorker\Wrappers
+ * @package Nadge\AwsWorker\Wrappers
  */
 class DefaultWorker implements WorkerInterface
 {

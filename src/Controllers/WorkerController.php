@@ -1,10 +1,10 @@
 <?php
 
-namespace Dusterio\AwsWorker\Controllers;
+namespace Nadge\AwsWorker\Controllers;
 
-use Dusterio\AwsWorker\Exceptions\MalformedRequestException;
-use Dusterio\AwsWorker\Jobs\AwsJob;
-use Dusterio\AwsWorker\Wrappers\WorkerInterface;
+use Nadge\AwsWorker\Exceptions\MalformedRequestException;
+use Nadge\AwsWorker\Jobs\AwsJob;
+use Nadge\AwsWorker\Wrappers\WorkerInterface;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;

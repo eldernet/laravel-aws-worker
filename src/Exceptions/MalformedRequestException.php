@@ -1,10 +1,10 @@
 <?php
 
-namespace Dusterio\AwsWorker\Exceptions;
+namespace Nadge\AwsWorker\Exceptions;
 
 /**
  * Class MalformedRequestException
- * @package Dusterio\AwsWorker\Exceptions
+ * @package Nadge\AwsWorker\Exceptions
  */
 class MalformedRequestException extends \Exception
 {

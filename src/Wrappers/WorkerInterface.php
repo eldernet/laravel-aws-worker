@@ -1,10 +1,10 @@
 <?php
 
-namespace Dusterio\AwsWorker\Wrappers;
+namespace Nadge\AwsWorker\Wrappers;
 
 /**
  * Interface WorkerInterface
- * @package Dusterio\AwsWorker\Wrappers
+ * @package Nadge\AwsWorker\Wrappers
  */
 interface WorkerInterface
 {

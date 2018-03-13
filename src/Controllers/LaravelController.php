@@ -1,6 +1,6 @@
 <?php
 
-namespace Dusterio\AwsWorker\Controllers;
+namespace Nadge\AwsWorker\Controllers;
 
 abstract class LaravelController
 {
