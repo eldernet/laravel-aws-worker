@@ -7,6 +7,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\QueueManager;
+use Illuminate\Queue\Worker;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 
 /**
  * Class CustomQueueServiceProvider
@@ -45,5 +47,21 @@ class LumenServiceProvider extends ServiceProvider
         $this->app->singleton(QueueManager::class, function() {
             return new QueueManager($this->app);
         });
+
+        // If lumen version is 6 or above then the worker bindings change. So we initiate it here
+        if (preg_match('/Lumen \(6/', $this->app->version())) {
+            $this->app->singleton(Worker::class, function () {
+                $isDownForMaintenance = function () {
+                    return $this->app->isDownForMaintenance();
+                };
+
+                return new Worker(
+                    $this->app['queue'],
+                    $this->app['events'],
+                    $this->app[ExceptionHandler::class],
+                    $isDownForMaintenance
+                );
+            });
+        }
     }
 }

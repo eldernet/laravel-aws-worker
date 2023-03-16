@@ -23,16 +23,25 @@ class WorkerController extends LaravelController
     ];
 
     /**
+     * @var string
+     */
+    const LARAVEL_SCHEDULE_COMMAND = 'schedule';
+
+    /**
      * This method is nearly identical to ScheduleRunCommand shipped with Laravel, but since we are not interested
      * in console output we couldn't reuse it
      *
      * @param Container $laravel
      * @param Kernel $kernel
      * @param Schedule $schedule
+     * @param Request $request
      * @return array
      */
-    public function schedule(Container $laravel, Kernel $kernel, Schedule $schedule)
+    public function schedule(Container $laravel, Kernel $kernel, Schedule $schedule, Request $request)
     {
+        $command = $request->headers->get('X-Aws-Sqsd-Taskname', $this::LARAVEL_SCHEDULE_COMMAND);
+        if ($command != $this::LARAVEL_SCHEDULE_COMMAND) return $this->runSpecificCommand($kernel, $request->headers->get('X-Aws-Sqsd-Taskname'));
+
         $events = $schedule->dueEvents($laravel);
         $eventsRan = 0;
         $messages = [];
@@ -57,6 +66,49 @@ class WorkerController extends LaravelController
     }
 
     /**
+     * @param string $command
+     * @return array
+     */
+    protected function parseCommand($command)
+    {
+        $elements = explode(' ', $command);
+        $name = $elements[0];
+        if (count($elements) == 1) return [$name, []];
+
+        array_shift($elements);
+        $arguments = [];
+
+        array_map(function($parameter) use (&$arguments) {
+            if (strstr($parameter, '=')) {
+                $parts = explode('=', $parameter);
+                $arguments[$parts[0]] = $parts[1];
+                return;
+            }
+
+            $arguments[$parameter] = true;
+        }, $elements);
+
+        return [
+            $name,
+            $arguments
+        ];
+    }
+
+    /**
+     * @param Kernel $kernel
+     * @param $command
+     * @return Response
+     */
+    protected function runSpecificCommand(Kernel $kernel, $command)
+    {
+        list ($name, $arguments) = $this->parseCommand($command);
+
+        $exitCode = $kernel->call($name, $arguments);
+
+        return $this->response($exitCode);
+    }
+
+    /**
      * @param Request $request
      * @param WorkerInterface $worker
      * @param Container $laravel
@@ -73,20 +125,43 @@ class WorkerController extends LaravelController
             'MessageId' => $request->header('X-Aws-Sqsd-Msgid'),
             'ReceiptHandle' => false,
             'Attributes' => [
-                'ApproximateReceiveCount' => $request->header('X-Aws-Sqsd-Receive-Count')
+                'ApproximateReceiveCount' => $request->header('X-Aws-Sqsd-Receive-Count'),
+                'SentTimestamp' => $request->headers->has('X-Aws-Sqsd-First-Received-At') ? strtotime($request->header('X-Aws-Sqsd-First-Received-At')) * 1000 : null
             ]
         ]);
 
         $worker->process(
-            $request->header('X-Aws-Sqsd-Queue'), $job, [
-                'maxTries' => 0,
+            $request->header('X-Aws-Sqsd-Queue'), $job, array_merge([
                 'delay' => 0
-            ]
+            ],  $this->tryToExtractOptions($body))
         );
 
         return $this->response([
             'Processed ' . $job->getJobId()
         ]);
+    }
+
+    /**
+     * @param $input
+     * @return int
+     */
+    private function tryToExtractOptions($input)
+    {
+        $parameters = [
+            'maxTries' => 0,
+            'timeout' => 60
+        ];
+
+        // Try to extract listener class options from the serialized job body
+        if (preg_match('/tries\\\\\\\\\\\\";i:(?<attempts>\d+);/', $input, $matches)) {
+            $parameters['maxTries'] = intval($matches['attempts']);
+        }
+
+        if (preg_match('/timeout\\\\\\\\\\\\";i:(?<timeout>\d+);/', $input, $matches)) {
+            $parameters['timeout'] = intval($matches['timeout']);
+        }
+
+        return $parameters;
     }
 
     /**

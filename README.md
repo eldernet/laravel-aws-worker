@@ -22,8 +22,9 @@ This package helps you run your Laravel (or Lumen) jobs in AWS worker environmen
 * PHP >= 5.5
 * Laravel (or Lumen) >= 5.1
 
-## Scheduled tasks
+## Scheduled tasks - option 1
 
+Option one is to use Kernel.php as the schedule and run Laravel schedule runner every minute.
 You remember how Laravel documentation advised you to invoke the task scheduler? Right, by running ```php artisan schedule:run``` on regular basis, and to do that we had to add an entry to our cron file:
 
 ```bash
@@ -43,6 +44,7 @@ cron:
 ```
 
 From now on, AWS will do POST /worker/schedule to your endpoint every minute - kind of the same effect we achieved when editing a UNIX cron file. The important difference here is that the worker environment still has to run a web process in order to execute scheduled tasks.
+Behind the scenes it will do something very similar to a built-in `schedule:run` command.
 
 Your scheduled tasks should be defined in ```App\Console\Kernel::class``` - just where they normally live in Laravel, eg.:
 
@@ -53,6 +55,28 @@ protected function schedule(Schedule $schedule)
               ->everyMinute();
 }
 ```
+
+## Scheduled tasks - option 2
+
+Option two is to use AWS schedule defined in the cron.yml:
+
+```yaml
+version: 1
+cron:
+ - name: "run:command"
+   url: "/worker/schedule"
+   schedule: "0 * * * *"
+
+ - name: "do:something --param=1 -v"
+   url: "/worker/schedule"
+   schedule: "*/5 * * * *"
+```
+
+Note that AWS will use UTC timezone for cron expressions. With the above example,
+AWS will hit /worker/schedule endpoint every hour with `run:command` artisan command and every
+5 minutes with `do:something` command. Command parameters aren't supported at this stage.
+
+Pick whichever option is better for you!
 
 ## Queued jobs: SQS
 
@@ -161,9 +185,43 @@ Please make sure that two special routes are not mounted behind a CSRF middlewar
 If your job fails, we will throw a ```FailedJobException```. If you want to customize error output – just customise your exception handler.
 Note that your HTTP status code must be different from 200 in order for AWS to realize the job has failed.
 
+## Job expiration (retention)
+
+A new nice feature is being able to set a job expiration (retention in AWS terms) in seconds so 
+that low value jobs get skipped completely if there is temporary queue latency due to load.
+
+Let's say we have a spike in queued jobs and some of them don't even make sense anymore
+now that a few minutes passed – we don't want to spend computing resources processing them
+later.
+
+By setting a special property on a job or a listener class:
+```php
+class PurgeCache implements ShouldQueue
+{
+    public static int $retention = 300; // If this job is delayed more than 300 seconds, skip it
+}
+```
+
+We can make sure that we won't run this job later than 300 seconds since it's been queued.
+This is similar to AWS SQS "message retention" setting which can only be set globally for
+the whole queue.
+
+To use this new feature, you have to use provided ```Jobs\CallQueuedHandler``` class that
+extends Laravel's default ```CallQueuedHandler```. A special ```ExpiredJobException``` exception
+will be thrown when expired jobs arrive and then it's up to you what to do with them.
+
+If you just catch these exceptions and therefore stop Laravel from returning code 500
+to AWS daemon, the job will be deleted by AWS automatically.
+
 ## ToDo
 
 1. Add support for AWS dead letter queue (retry jobs from that queue?)
+
+## Video tutorials
+
+I've just started a educational YouTube channel that will cover top IT trends in software development and DevOps: [config.sys](https://www.youtube.com/channel/UCIvUJ1iVRjJP_xL0CD7cMpg)
+
+Also I'm glad to announce a new cool tool of mine – [GrammarCI](https://www.grammarci.com/), an automated typo/grammar checker for developers, as a part of the CI/CD pipeline.
 
 ## Implications
 
