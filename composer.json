@@ -1,5 +1,5 @@
 {
-    "name": "dusterio/laravel-aws-worker",
+    "name": "eldernet/laravel-aws-worker",
     "type": "library",
     "description": "Run Laravel (or Lumen) tasks and queue listeners inside of AWS Elastic Beanstalk workers",
     "keywords": [
